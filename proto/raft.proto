@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package raft;
+
+// Exposes the interface for nodes participating in the Raft consensus protocol.
+//
+service Raft {
+  // Called when a node times out while in the follower state and transitions
+  // into the candidate state. Requests that other nodes in the cluster vote on
+  // whether the node making the request should be the new leader or not.
+  //
+  rpc RequestVote(RequestVoteRequest) returns (RequestVoteResponse) {}
+
+  // Sent by the leader node to followers so they can update their log entries
+  // to match the leader.
+  //
+  rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse) {}
+}
+
+// RPC message sent when the node transitions from a `Follower` state into the
+// `Candidate` state.
+//
+message RequestVoteRequest {
+  // Message ID (for metrics).
+  string request_id = 1;
+
+  // ID of the candidate requesting the vote.
+  string candidate_id = 2;
+
+  // Candidate's term.
+  int64 term = 3;
+
+  // Index of the candidate's last log entry.
+  int64 latest_log_term = 4;
+
+  // Term of the candidate's last log entry.
+  int64 latest_log_index = 5;
+}
+
+// RPC message sent by a node in response to a `RequestVote` message.
+//
+message RequestVoteResponse {
+  // Message ID (for metrics).
+  string response_id = 1;
+
+  // The ID of the node responding to the request.
+  string voter_id = 2;
+
+  // Current term of the node sending the response.
+  int64 term = 3;
+
+  // `true` if the node votes for the candidate, `false` if it doesn't.
+  bool vote_granted = 4;
+}
+
+// RPC message sent by a leader node to all the followers so they can update
+// their logs.
+//
+message AppendEntriesRequest {
+  // Message ID (for metrics).
+  string request_id = 1;
+
+  // The index of log the log entry immediately preceeding the new ones.
+  int64 last_index = 2;
+
+  // The term associated with the `last_index`.
+  int64 last_term = 3;
+
+  // The current term of the leader.
+  int64 term = 4;
+
+  // The leader's unique ID.
+  string leader_id = 5;
+
+  // Index of the highest log entry known to be committed by the leader.
+  int64 leader_commit_index = 6;
+
+  // Log entries to store. If empty, then this message is a heartbeat.
+  repeated string entries = 7;
+}
+
+// RPC message sent by a node in response to an `AppendEntries` request.
+//
+message AppendEntriesResponse {
+  // Message ID (for metrics).
+  string response_id = 1;
+
+  // The ID of the node responding to the request.
+  string follower_id = 2;
+
+  // Current term of the follower that received the initial request.
+  int64 term = 3;
+
+  // True if the follower contained an entry matching `last_index` and
+  // `last_term` from the `AppendEntriesRequest`.
+  bool success = 4;
+}
